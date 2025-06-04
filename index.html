@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Daftar Film</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background-color: #fff; color: #000; }
+    body.dark { background-color: #121212; color: #f0f0f0; }
+    form { display: flex; flex-direction: column; max-width: 300px; gap: 10px; margin-top: 10px; }
+    label { font-weight: bold; }
+    input, select { padding: 8px; font-size: 14px; }
+    button { padding: 8px; margin-top: 10px; cursor: pointer; }
+    .tools { margin-top: 20px; }
+    .tools input, .tools select { margin-right: 5px; padding: 6px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #aaa; padding: 10px; }
+    th { background-color: #f0f0f0; cursor: pointer; }
+    body.dark th { background-color: #333; }
+    caption { font-size: 1.4em; margin-bottom: 10px; font-weight: bold; }
+    .actions button { padding: 4px 8px; margin-right: 4px; }
+    .toggle-mode { float: right; margin-bottom: 10px; cursor: pointer; background: #eee; border: none; padding: 6px 10px; }
+    body.dark .toggle-mode { background: #444; color: #fff; }
+  </style>
+</head>
+<body>
+  <button class="toggle-mode" onclick="document.body.classList.toggle('dark')">🌙 Mode Gelap</button>
+  <h2>Tambah Film Baru</h2>
+  <form id="filmForm">
+    <label>Nama Film</label><input type="text" id="namaFilm" required>
+    <label>Audio</label><select id="audio" required><option value="">Pilih Audio</option><option value="Subtitle">Subtitle</option><option value="Dubbing">Dubbing</option></select>
+    <label>Tahun</label><input type="number" id="tahun" required>
+    <label>Kwalitas</label><select id="kwalitas" required><option value="">Pilih Kwalitas</option><option value="Restorasi">Restorasi</option><option value="Unrestorasi">Unrestorasi</option></select>
+    <label>Jenis File</label><select id="jenisFile" required><option value="">Pilih Jenis File</option><option value="mp4">mp4</option><option value="mkv">mkv</option><option value="dat">dat</option></select>
+    <button type="submit">Tambah</button>
+  </form>
+  <div class="tools">
+    <input type="text" id="search" placeholder="Cari Film...">
+    <select id="filterAudio"><option value="">Semua Audio</option><option value="Subtitle">Subtitle</option><option value="Dubbing">Dubbing</option></select>
+    <select id="filterKwalitas"><option value="">Semua Kwalitas</option><option value="Restorasi">Restorasi</option><option value="Unrestorasi">Unrestorasi</option></select>
+    <select id="filterJenisFile"><option value="">Semua Jenis File</option><option value="mp4">mp4</option><option value="mkv">mkv</option><option value="dat">dat</option></select>
+    <input type="file" id="inputExcel" accept=".xlsx">
+    <input type="file" id="inputPDF" accept=".pdf">
+    <button onclick="simpanKeLocalStorage()">Simpan</button>
+    <button onclick="ambilDariLocalStorage()">Ambil</button>
+    <button onclick="eksporExcel()">Ekspor Excel</button>
+    <button onclick="cetakPDF()">Cetak PDF</button>
+    <button onclick="hapusSemua()">Hapus Semua</button>
+  </div>
+  <table id="tabelFilm"><caption>Daftar Film</caption>
+    <thead><tr><th>No</th><th onclick="urutkan('nama')">Nama Film ▲▼</th><th>Audio</th><th onclick="urutkan('tahun')">Tahun ▲▼</th><th>Kwalitas</th><th>Jenis File</th><th>Aksi</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <script>
+    const form = document.getElementById('filmForm');
+    const tabel = document.querySelector('#tabelFilm tbody');
+    const search = document.getElementById('search');
+    const filterAudio = document.getElementById('filterAudio');
+    const filterKwalitas = document.getElementById('filterKwalitas');
+    const filterJenisFile = document.getElementById('filterJenisFile');
+    let dataFilm = [];
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const film = {
+        nama: document.getElementById('namaFilm').value.trim(),
+        audio: document.getElementById('audio').value,
+        tahun: document.getElementById('tahun').value,
+        kwalitas: document.getElementById('kwalitas').value,
+        jenisFile: document.getElementById('jenisFile').value
+      };
+      dataFilm.push(film);
+      form.reset();
+      renderTabel();
+    });
+    function renderTabel() {
+      tabel.innerHTML = '';
+      const filterData = dataFilm.filter(f =>
+        f.nama.toLowerCase().includes(search.value.toLowerCase()) &&
+        (!filterAudio.value || f.audio === filterAudio.value) &&
+        (!filterKwalitas.value || f.kwalitas === filterKwalitas.value) &&
+        (!filterJenisFile.value || f.jenisFile === filterJenisFile.value)
+      );
+      filterData.forEach((f, i) => {
+        const row = tabel.insertRow();
+        row.innerHTML = `<td>${i + 1}</td><td>${f.nama}</td><td>${f.audio}</td><td>${f.tahun}</td><td>${f.kwalitas}</td><td>${f.jenisFile}</td>
+          <td class="actions"><button onclick="editRow(${i})">Edit</button><button onclick="hapusRow(${i})">Hapus</button></td>`;
+      });
+    }
+    function editRow(i) {
+      const f = dataFilm[i];
+      const nama = prompt("Edit Nama Film:", f.nama);
+      const audio = prompt("Edit Audio:", f.audio);
+      const tahun = prompt("Edit Tahun:", f.tahun);
+      const kwalitas = prompt("Edit Kwalitas:", f.kwalitas);
+      const jenisFile = prompt("Edit Jenis File:", f.jenisFile);
+      if (nama && audio && tahun && kwalitas && jenisFile) {
+        dataFilm[i] = { nama, audio, tahun, kwalitas, jenisFile };
+        renderTabel();
+      }
+    }
+    function hapusRow(i) {
+      if (confirm("Yakin ingin menghapus?")) {
+        dataFilm.splice(i, 1);
+        renderTabel();
+      }
+    }
+    function simpanKeLocalStorage() {
+      localStorage.setItem('filmData', JSON.stringify(dataFilm));
+      alert("Data disimpan.");
+    }
+    function ambilDariLocalStorage() {
+      const data = JSON.parse(localStorage.getItem('filmData') || '[]');
+      dataFilm = data;
+      renderTabel();
+    }
+    function hapusSemua() {
+      if (confirm("Hapus semua data?")) {
+        dataFilm = [];
+        localStorage.removeItem('filmData');
+        renderTabel();
+      }
+    }
+    function urutkan(kunci) {
+      dataFilm.sort((a, b) => kunci === 'tahun' ? a.tahun - b.tahun : a.nama.localeCompare(b.nama));
+      renderTabel();
+    }
+    function eksporExcel() {
+      const ws = XLSX.utils.json_to_sheet(dataFilm);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Film");
+      XLSX.writeFile(wb, "Daftar_Film.xlsx");
+    }
+    async function cetakPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const rows = dataFilm.map((f, i) => [i + 1, f.nama, f.audio, f.tahun, f.kwalitas, f.jenisFile]);
+      doc.text("Daftar Film", 14, 16);
+      doc.autoTable({ head: [["No", "Nama Film", "Audio", "Tahun", "Kwalitas", "Jenis File"]], body: rows, startY: 20 });
+      doc.save("Daftar_Film.pdf");
+    }
+    document.getElementById('inputExcel').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = evt => {
+        const workbook = XLSX.read(new Uint8Array(evt.target.result), { type: "array" });
+        const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+        dataFilm = json.map(r => ({
+          nama: r["Nama Film"] || '',
+          audio: r["Audio"] || '',
+          tahun: r["Tahun"] || '',
+          kwalitas: r["Kwalitas"] || '',
+          jenisFile: r["Jenis File"] || ''
+        }));
+        renderTabel();
+      };
+      reader.readAsArrayBuffer(file);
+    });
+    document.getElementById('inputPDF').addEventListener('change', async e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async function() {
+        const typedArray = new Uint8Array(reader.result);
+        const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
+        let allText = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          const text = content.items.map(item => item.str).join(' ');
+          allText += text + '\n';
+        }
+        const lines = allText.split('\n');
+        lines.forEach(line => {
+          const match = line.match(/^(\d+)\s+(.+)/);
+          if (!match) return;
+          const parts = match[2].trim().split(/\s+/);
+          const idxAudio = parts.findIndex(p => p === 'Dubbing' || p === 'Subtitle');
+          if (idxAudio === -1 || parts.length < idxAudio + 4) return;
+          const nama = parts.slice(0, idxAudio).join(' ');
+          const audio = parts[idxAudio];
+          const tahun = parts[idxAudio + 1];
+          const kwalitas = parts[idxAudio + 2];
+          const jenisFile = parts[idxAudio + 3];
+          dataFilm.push({ nama, audio, tahun, kwalitas, jenisFile });
+        });
+        renderTabel();
+        alert("Data dari PDF berhasil dimasukkan.");
+      };
+      reader.readAsArrayBuffer(file);
+    });
+    search.addEventListener('input', renderTabel);
+    filterAudio.addEventListener('change', renderTabel);
+    filterKwalitas.addEventListener('change', renderTabel);
+    filterJenisFile.addEventListener('change', renderTabel);
+    ambilDariLocalStorage();
+  </script>
+</body>
+</html>
