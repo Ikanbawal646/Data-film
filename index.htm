@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Daftar Film Bollywood</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #e0e0e0;
+      margin: 0;
+      padding: 20px;
+    }
+    .dark-mode {
+      background-color: #1e1e1e;
+      color: white;
+    }
+    .accordion {
+      margin-bottom: 15px;
+    }
+    .accordion button {
+      width: 100%;
+      text-align: left;
+      padding: 12px;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      outline: none;
+      background-color: #eee;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .accordion button:hover {
+      background-color: #ccc;
+    }
+    .accordion .panel {
+      padding: 15px;
+      background-color: white;
+      display: none;
+      overflow: hidden;
+      border: 1px solid #ccc;
+    }
+    .dark-mode .accordion button {
+      background-color: #333;
+      color: white;
+    }
+    .dark-mode .accordion .panel {
+      background-color: #2e2e2e;
+      border-color: #555;
+    }
+    input, button, select {
+      padding: 8px;
+      margin: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background-color: #f2f2f2;
+      cursor: pointer;
+    }
+    .dark-mode th {
+      background-color: #555;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+
+
+</div><!-- Form Tambah --><div class="accordion">
+  <button onclick="togglePanel(this)">➕ Form Tambah Film</button>
+  <div class="panel">
+    <form id="filmForm">
+      <input type="text" id="namaFilm" placeholder="Nama Film" required>
+      <select id="audio" required>
+        <option value="">-- Audio --</option>
+        <option value="Dubbing">Dubbing</option>
+        <option value="Subtitle">Subtitle</option>
+      </select>
+      <input type="number" id="tahun" placeholder="Tahun" required>
+      <select id="kwalitas" required>
+        <option value="">-- Kualitas --</option>
+        <option value="Restorasi">Restorasi</option>
+        <option value="Non-Restorasi">Non-Restorasi</option>
+      </select>
+      <select id="jenisFile" required>
+        <option value="">-- Jenis File --</option>
+        <option value="mp4">mp4</option>
+        <option value="mkv">mkv</option>
+        <option value="dat">dat</option>
+      </select>
+      <input type="url" id="linkDownload" placeholder="Link Download" required>
+      <button type="submit">Tambah</button>
+    </form>
+  </div>
+</div><!-- Filter --><div class="accordion">
+  <button onclick="togglePanel(this)">🛠️ Filter Film</button>
+  <div class="panel">
+    <select id="filterAudio" onchange="filterData()">
+      <option value="">Semua Audio</option>
+      <option value="Dubbing">Dubbing</option>
+      <option value="Subtitle">Subtitle</option>
+    </select>
+    <select id="filterKwalitas" onchange="filterData()">
+      <option value="">Semua Kualitas</option>
+      <option value="Restorasi">Restorasi</option>
+      <option value="Non-Restorasi">Non-Restorasi</option>
+    </select>
+    <select id="filterJenisFile" onchange="filterData()">
+      <option value="">Semua File</option>
+      <option value="mp4">mp4</option>
+      <option value="mkv">mkv</option>
+      <option value="dat">dat</option>
+    </select>
+    <select id="filterTahun" onchange="filterData()">
+      <option value="">Semua Tahun</option>
+    </select>
+  </div>
+</div><!-- Pencarian --><div class="accordion">
+  <button onclick="togglePanel(this)">🔍 Pencarian</button>
+  <div class="panel">
+    <input type="text" id="searchInput" placeholder="Cari berdasarkan nama, audio, dll" oninput="searchTable()">
+  </div>
+</div>
+
+
+
+<!-- Ekspor & Impor --><div class="accordion">
+  <button onclick="togglePanel(this)">📄 Ekspor & Impor</button>
+  <div class="panel">
+    <button onclick="exportToExcel()">Ekspor ke Excel</button>
+    <button onclick="exportToPDF()">Ekspor ke PDF</button>
+    <button onclick="backupToJSON()">Backup JSON</button><br><br>
+    <input type="file" id="importExcel" accept=".xlsx" onchange="importExcel()">
+    <input type="file" id="importJSON" accept=".json" onchange="importJSON()">
+  </div>
+</div><!-- Pengaturan --><div class="accordion">
+  <button onclick="togglePanel(this)">⚙️ Pengaturan</button>
+  <div class="panel">
+    <button onclick="clearAllData()">Hapus Semua Data</button>
+    <button onclick="toggleDarkMode()">Mode Gelap / Terang</button>
+  </div>
+
+</div><!-- 📊 Statistik Film --><div class="accordion">
+  <button onclick="togglePanel(this)">📊 Statistik Film</button>
+<!-- Statistik Ringkas -->
+<div id="statistik" style="margin-top: 20px; padding: 10px; background: #black; border-radius: 8px;">
+  <h3>📊 Statistik Film</h3>
+  <p id="jumlahFilm"></p>
+  <p id="jumlahAudio"></p>
+  <p id="jumlahJenisFile"></p>
+  <p id="jumlahKwalitas"></p>
+  <p id="jumlahTahun"></p>
+</div>
+
+
+
+<!-- Tabel Film -->
+<h2>📺 Daftar Film</h2>
+<div id="statistik" style="margin-bottom: 15px; font-weight: bold;"></div>
+
+
+
+<table id="filmTable">
+  <thead>
+    <tr>
+      <th>No</th>
+      <th onclick="sortTable('nama')">Nama</th>
+      <th onclick="sortTable('audio')">Audio</th>
+      <th onclick="sortTable('tahun')">Tahun</th>
+      <th onclick="sortTable('kwalitas')">Kualitas</th>
+      <th onclick="sortTable('jenisFile')">Jenis File</th>
+      <th>Link</th>
+      <th>Aksi</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+
+
+
+
+<script>
+  const form = document.getElementById('filmForm');
+  let dataFilm = JSON.parse(localStorage.getItem('dataFilm')) || [];
+  let darkMode = localStorage.getItem('darkMode') === 'true';
+  let sortState = { field: '', asc: true };
+  let filteredData = [];
+
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    const film = {
+      nama: namaFilm.value,
+      audio: audio.value,
+      tahun: parseInt(tahun.value),
+      kwalitas: kwalitas.value,
+      jenisFile: jenisFile.value,
+      link: linkDownload.value
+    };
+    dataFilm.push(film);
+    localStorage.setItem('dataFilm', JSON.stringify(dataFilm));
+    form.reset();
+    renderTabel();
+  };
+
+  function renderTabel() {
+    const tbody = document.querySelector('#filmTable tbody');
+    tbody.innerHTML = '';
+    const list = filteredData.length ? filteredData : dataFilm;
+    list.forEach((film, i) => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${i + 1}</td>
+        <td>${film.nama}</td>
+        <td>${film.audio}</td>
+        <td>${film.tahun}</td>
+        <td>${film.kwalitas}</td>
+        <td>${film.jenisFile}</td>
+        <td><a href="${film.link}" target="_blank">Download</a></td>
+        <td>
+          <button onclick="editRow(${i})">Edit</button>
+          <button onclick="deleteRow(${i})">Hapus</button>
+        </td>`;
+      tbody.appendChild(row);
+    });
+  }
+
+  function editRow(i) {
+    const f = dataFilm[i];
+    const nama = prompt("Nama:", f.nama);
+    const audio = prompt("Audio:", f.audio);
+    const tahun = prompt("Tahun:", f.tahun);
+    const kwalitas = prompt("Kualitas:", f.kwalitas);
+    const jenisFile = prompt("Jenis File:", f.jenisFile);
+    const link = prompt("Link:", f.link);
+    if (nama && audio && tahun && kwalitas && jenisFile) {
+      dataFilm[i] = { nama, audio, tahun: parseInt(tahun), kwalitas, jenisFile, link };
+      localStorage.setItem('dataFilm', JSON.stringify(dataFilm));
+      renderTabel();
+    }
+  }
+
+  function deleteRow(i) {
+    if (confirm("Hapus data ini?")) {
+      dataFilm.splice(i, 1);
+      localStorage.setItem('dataFilm', JSON.stringify(dataFilm));
+      renderTabel();
+    }
+  }
+
+  function exportToExcel() {
+    const ws = XLSX.utils.json_to_sheet(dataFilm);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Film");
+    XLSX.writeFile(wb, "DaftarFilm.xlsx");
+  }
+
+  function exportToPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(12);
+    doc.text("Daftar Film", 10, 10);
+    dataFilm.forEach((film, i) => {
+      doc.text(`${i + 1}. ${film.nama} (${film.tahun}) - ${film.audio}, ${film.kwalitas}`, 10, 20 + (i * 10));
+    });
+    doc.save("DaftarFilm.pdf");
+  }
+
+  function backupToJSON() {
+    const blob = new Blob([JSON.stringify(dataFilm)], { type: "application/json" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "dataFilm.json";
+    link.click();
+  }
+
+  function importJSON() {
+    const file = document.getElementById('importJSON').files[0];
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        dataFilm = JSON.parse(reader.result);
+        localStorage.setItem('dataFilm', JSON.stringify(dataFilm));
+        renderTabel();
+      } catch (e) {
+        alert("File JSON tidak valid.");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function importExcel() {
+    const file = document.getElementById('importExcel').files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const wb = XLSX.read(e.target.result, { type: 'binary' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      dataFilm = XLSX.utils.sheet_to_json(sheet);
+      localStorage.setItem('dataFilm', JSON.stringify(dataFilm));
+      renderTabel();
+    };
+    reader.readAsBinaryString(file);
+  }
+
+  function clearAllData() {
+    if (confirm("Yakin ingin menghapus semua data?")) {
+      dataFilm = [];
+      localStorage.removeItem('dataFilm');
+      renderTabel();
+    }
+  }
+
+  function toggleDarkMode() {
+    darkMode = !darkMode;
+    localStorage.setItem('darkMode', darkMode);
+    document.body.classList.toggle('dark-mode', darkMode);
+  }
+
+  function searchTable() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    filteredData = dataFilm.filter(f =>
+      f.nama.toLowerCase().includes(q) ||
+      f.audio.toLowerCase().includes(q) ||
+      String(f.tahun).includes(q) ||
+      f.kwalitas.toLowerCase().includes(q) ||
+      f.jenisFile.toLowerCase().includes(q)
+    );
+    renderTabel();
+  }
+
+  function sortTable(field) {
+    sortState.asc = sortState.field === field ? !sortState.asc : true;
+    sortState.field = field;
+    const data = filteredData.length ? filteredData : dataFilm;
+    data.sort((a, b) => {
+      if (typeof a[field] === 'number') {
+        return sortState.asc ? a[field] - b[field] : b[field] - a[field];
+      }
+      return sortState.asc
+        ? a[field].localeCompare(b[field])
+        : b[field].localeCompare(a[field]);
+    });
+    renderTabel();
+  }
+
+  function togglePanel(btn) {
+    const panel = btn.nextElementSibling;
+    panel.style.display = panel.style.display === "block" ? "none" : "block";
+  }
+
+  if (darkMode) document.body.classList.add('dark-mode');
+  renderTabel();
+
+
+// Tambahkan di akhir script Anda:
+function filterData() {
+  const audio = document.getElementById('filterAudio').value;
+  const kwalitas = document.getElementById('filterKwalitas').value;
+  const jenisFile = document.getElementById('filterJenisFile').value;
+  const tahun = document.getElementById('filterTahun').value;
+
+  filteredData = dataFilm.filter(f => {
+    return (!audio || f.audio === audio) &&
+           (!kwalitas || f.kwalitas === kwalitas) &&
+           (!jenisFile || f.jenisFile === jenisFile) &&
+           (!tahun || f.tahun == tahun);
+  });
+  renderTabel();
+}
+
+// Update renderTabel untuk mengisi dropdown tahun
+function renderTabel() {
+  const tbody = document.querySelector('#filmTable tbody');
+  tbody.innerHTML = '';
+  const list = filteredData.length ? filteredData : dataFilm;
+  list.forEach((film, i) => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${i + 1}</td>
+      <td>${film.nama}</td>
+      <td>${film.audio}</td>
+      <td>${film.tahun}</td>
+      <td>${film.kwalitas}</td>
+      <td>${film.jenisFile}</td>
+      <td><a href="${film.link}" target="_blank">Download</a></td>
+      <td>
+        <button onclick="editRow(${i})">Edit</button>
+        <button onclick="deleteRow(${i})">Hapus</button>
+      </td>`;
+    tbody.appendChild(row);
+  });
+  populateTahunOptions();
+}
+
+function populateTahunOptions() {
+  const tahunSelect = document.getElementById('filterTahun');
+  const tahunSet = new Set(dataFilm.map(f => f.tahun));
+  tahunSelect.innerHTML = '<option value="">Semua Tahun</option>';
+  [...tahunSet].sort().forEach(t => {
+    const option = document.createElement('option');
+    option.value = t;
+    option.textContent = t;
+    tahunSelect.appendChild(option);
+  });
+}
+
+
+function updateStatistik() {
+  const list = filteredData.length ? filteredData : dataFilm;
+
+  const jumlahTotal = list.length;
+
+  const audioSet = new Set(list.map(f => f.audio));
+  const jenisSet = new Set(list.map(f => f.jenisFile));
+  const kwalitasSet = new Set(list.map(f => f.kwalitas));
+  const tahunSet = new Set(list.map(f => f.tahun));
+
+  document.getElementById('jumlahFilm').textContent = `Jumlah Film: ${jumlahTotal}`;
+  document.getElementById('jumlahAudio').textContent = `Audio: ${[...audioSet].join(', ')}`;
+  document.getElementById('jumlahJenisFile').textContent = `Jenis File: ${[...jenisSet].join(', ')}`;
+  document.getElementById('jumlahKwalitas').textContent = `Kualitas: ${[...kwalitasSet].join(', ')}`;
+  document.getElementById('jumlahTahun').textContent = `Tahun: ${[...tahunSet].sort().join(', ')}`;
+}
+
+function renderTabel() {
+  const tbody = document.querySelector('#filmTable tbody');
+  tbody.innerHTML = '';
+  const list = filteredData.length ? filteredData : dataFilm;
+  list.forEach((film, i) => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${i + 1}</td>
+      <td>${film.nama}</td>
+      <td>${film.audio}</td>
+      <td>${film.tahun}</td>
+      <td>${film.kwalitas}</td>
+      <td>${film.jenisFile}</td>
+      <td><a href="${film.link}" target="_blank">Download</a></td>
+      <td>
+        <button onclick="editRow(${i})">Edit</button>
+        <button onclick="deleteRow(${i})">Hapus</button>
+      </td>`;
+    tbody.appendChild(row);
+  });
+  populateTahunOptions();
+  updateStatistik(); // Tambahkan ini
+}
+
+function updateStatistik() {
+  const list = filteredData.length ? filteredData : dataFilm;
+  const total = list.length;
+  const audioCount = {};
+  const kwalitasCount = {};
+  const jenisFileCount = {};
+  const tahunCount = {};
+
+  list.forEach(f => {
+    audioCount[f.audio] = (audioCount[f.audio] || 0) + 1;
+    kwalitasCount[f.kwalitas] = (kwalitasCount[f.kwalitas] || 0) + 1;
+    jenisFileCount[f.jenisFile] = (jenisFileCount[f.jenisFile] || 0) + 1;
+    tahunCount[f.tahun] = (tahunCount[f.tahun] || 0) + 1;
+  });
+
+  const statistikDiv = document.getElementById('statistik');
+  statistikDiv.innerHTML = `
+    Total Film: ${total}<br>
+    Audio: ${Object.entries(audioCount).map(([k,v]) => `${k}: ${v}`).join(', ')}<br>
+    Kualitas: ${Object.entries(kwalitasCount).map(([k,v]) => `${k}: ${v}`).join(', ')}<br>
+    Jenis File: ${Object.entries(jenisFileCount).map(([k,v]) => `${k}: ${v}`).join(', ')}<br>
+    Tahun: ${Object.entries(tahunCount).sort((a,b) => a[0]-b[0]).map(([k,v]) => `${k}: ${v}`).join(', ')}
+  `;
+}
+
+updateStatistik();
+function updateStatistik() {
+  const list = filteredData.length ? filteredData : dataFilm;
+  const total = list.length;
+  const audioCount = {};
+  const kwalitasCount = {};
+  const jenisFileCount = {};
+  const tahunCount = {};
+
+  list.forEach(f => {
+    audioCount[f.audio] = (audioCount[f.audio] || 0) + 1;
+    kwalitasCount[f.kwalitas] = (kwalitasCount[f.kwalitas] || 0) + 1;
+    jenisFileCount[f.jenisFile] = (jenisFileCount[f.jenisFile] || 0) + 1;
+    tahunCount[f.tahun] = (tahunCount[f.tahun] || 0) + 1;
+  });
+
+  const statistikDiv = document.getElementById('statistik');
+  statistikDiv.innerHTML = `
+    🎬 <b>Total Film:</b> ${total}<br>
+    🔊 <b>Audio:</b> ${Object.entries(audioCount).map(([k,v]) => `${k}: ${v}`).join(', ')}<br>
+    🏆 <b>Kualitas:</b> ${Object.entries(kwalitasCount).map(([k,v]) => `${k}: ${v}`).join(', ')}<br>
+    💾 <b>Jenis File:</b> ${Object.entries(jenisFileCount).map(([k,v]) => `${k}: ${v}`).join(', ')}<br>
+    📅 <b>Tahun:</b> ${Object.entries(tahunCount).sort((a,b) => a[0]-b[0]).map(([k,v]) => `${k}: ${v}`).join(', ')}
+  `;
+}
+
+
+
+</script>
+
+</body>
+</html>
